@@ -1,0 +1,13 @@
+{
+    "experiment_id": "exp_20250731_1420",
+    "paths": {
+      "agg_path": "B:/path/to/AGG",
+      "mqtt_path": "B:/path/to/mqtt.csv"
+    },
+    "parameters": {
+      "highlight_well": 1,
+      "temp_threshold": 38.5,
+      "slope_factor": 1.2,
+      "well_numbers": [1, 2, 3, 4, 5]
+    }
+  }
