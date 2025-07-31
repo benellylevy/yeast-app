@@ -1,3 +1,17 @@
+// פונקציה לעדכון טבלת feedback_log
+function updateFeedbackTable() {
+    fetch('/api/feedback_log')
+        .then(res => res.json())
+        .then(data => {
+            const tableBody = document.querySelector('#feedbackTable tbody');
+            tableBody.innerHTML = '';
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${index + 1}</td><td>${row.val}</td><td>${row.Temp_sent}</td>`;
+                tableBody.appendChild(tr);
+            });
+        });
+}
 let gfpCtx = document.getElementById('gfpChart').getContext('2d');
 let gfpChart = new Chart(gfpCtx, {
     type: 'line',
@@ -115,3 +129,7 @@ function fetchTemperature() {
 }
 
 setInterval(fetchTemperature, 1000);
+
+// רענון טבלת פידבק כל 10 דקות
+setInterval(updateFeedbackTable, 600000);
+window.onload = updateFeedbackTable;
