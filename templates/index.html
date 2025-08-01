@@ -270,6 +270,8 @@
               });
       }
 
+      // Highlighted well number for feedback (1-based index)
+      const highlightWell = 1;
       // refreshDualChart: fetches GFP and temperature data and updates the chart on the page
       function refreshDualChart() {
           fetch("/refresh_dual_data")
@@ -277,21 +279,86 @@
               .then(data => {
                   if (data.error) return; // skip if error
                   const t0 = new Date(data.t0);
-                  // Prepare GFP data points for chart
-                  const gfpPoints = data.gfp_data.map(row => ({
-                      x: (new Date(row.Time_Stamp) - t0) / 60000,
-                      y: row.mean_F_C2
-                  }));
+
+                  // צבעים בסיסיים עבור בארות (לשימוש במצב acclimation)
+                  const baseColors = [
+                      "#00ffcc", "#ffb300", "#e91e63", "#3f51b5", "#009688", "#ff5722", "#8bc34a", "#f44336"
+                  ];
+                  const grayColor = "#cccccc";
+                  const feedbackColor = "#00ffcc";
+
+                  // קביעת מצב ניסוי
+                  const phase = data.experimentPhase || "acclimation";
+                  // הנחה: data.gfp_data הוא מערך של אובייקטים, כל אחד עם well_number
+                  // נזהה את כל בארות הקיימות
+                  const wells = [...new Set(data.gfp_data.map(row => row.well_number))];
+                  wells.sort((a, b) => a - b);
+                  // עבור כל באר, ליצור מערך נקודות שלה
+                  const datasets = wells.map((well, idx) => {
+                      const points = data.gfp_data
+                          .filter(row => row.well_number === well)
+                          .map(row => ({
+                              x: (new Date(row.Time_Stamp) - t0) / 60000,
+                              y: row.mean_F_C2
+                          }));
+                      let color;
+                      if (phase === "acclimation") {
+                        // כל באר בצבע שונה
+                        color = baseColors[idx % baseColors.length];
+                      } else if (phase === "feedback") {
+                        // כל הבארות אפור, רק באר הפידבק בצבע
+                        color = (well === highlightWell) ? feedbackColor : grayColor;
+                      } else {
+                        color = baseColors[idx % baseColors.length];
+                      }
+                      return {
+                        label: "Well " + well,
+                        data: points,
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 2
+                      };
+                  });
+
                   // Prepare temperature data points for chart
                   const tempPoints = data.temp_data.map(row => ({
                       x: (new Date(row.x) - t0) / 60000,
                       y: row.y
                   }));
+                  const tempDataset = {
+                    label: "Temperature",
+                    data: tempPoints,
+                    borderColor: "#ff4081",
+                    backgroundColor: "#ff4081",
+                    fill: false,
+                    yAxisID: "y1",
+                    borderDash: [4,2],
+                    pointRadius: 1
+                  };
+
                   // If chart already exists, update data and redraw
                   if (window.chart) {
-                      window.chart.data.datasets[0].data = gfpPoints;
-                      window.chart.data.datasets[1].data = tempPoints;
+                      window.chart.data.datasets = [...datasets, tempDataset];
                       window.chart.update();
+                  } else {
+                      // If chart does not exist, create it
+                      const ctx = document.getElementById('gfpChart').getContext('2d');
+                      window.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                          datasets: [...datasets, tempDataset]
+                        },
+                        options: {
+                          responsive: false,
+                          scales: {
+                            x: { type: 'linear', title: { display: true, text: 'Minutes' } },
+                            y: { type: 'linear', position: 'left', title: { display: true, text: 'GFP' } },
+                            y1: { type: 'linear', position: 'right', title: { display: true, text: 'Temp' }, grid: { drawOnChartArea: false } }
+                          }
+                        }
+                      });
                   }
                   // Show last update time
                   document.getElementById("lastUpdate").innerText = "Last updated: " + new Date().toLocaleTimeString();
