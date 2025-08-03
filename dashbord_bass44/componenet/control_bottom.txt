@@ -1,0 +1,115 @@
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Play, 
+  Square, 
+  RotateCcw, 
+  Activity, 
+  Zap, 
+  Settings,
+  Database,
+  BarChart3
+} from "lucide-react";
+import { SystemStatus } from "@/entities/SystemStatus";
+
+const CONTROL_SCRIPTS = [
+  { id: 'make_dir', label: 'START NEW EXPERIMENT', icon: Play, color: 'bg-green-500' },
+  { id: 'start_acclimation', label: 'START ACCLIMATION', icon: Activity, color: 'bg-blue-500' },
+  { id: 'start_feedback', label: 'START FEEDBACK', icon: Zap, color: 'bg-yellow-500' },
+  { id: 'run_baseline', label: 'RUN BASELINE', icon: BarChart3, color: 'bg-purple-500' },
+  { id: 'stop_feedback', label: 'STOP FEEDBACK', icon: Square, color: 'bg-red-500' },
+  { id: 'reset_system', label: 'RESET SYSTEM', icon: RotateCcw, color: 'bg-orange-500' },
+  { id: 'configure', label: 'CONFIGURE', icon: Settings, color: 'bg-cyan-500' },
+  { id: 'backup_data', label: 'BACKUP DATA', icon: Database, color: 'bg-indigo-500' }
+];
+
+export default function ControlButtons({ systemStatuses, refreshData }) {
+  const [runningProcesses, setRunningProcesses] = useState(new Set());
+  const [isExecuting, setIsExecuting] = useState(new Set());
+
+  useEffect(() => {
+    if (systemStatuses) {
+      const running = new Set(
+        systemStatuses.filter(s => s.is_running).map(s => s.process_name)
+      );
+      setRunningProcesses(running);
+    }
+  }, [systemStatuses]);
+
+  const executeScript = async (scriptId) => {
+    setIsExecuting(prev => new Set([...prev, scriptId]));
+    
+    try {
+      // Simulate script execution
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update system status
+      await SystemStatus.create({
+        process_name: scriptId,
+        is_running: !runningProcesses.has(scriptId),
+        last_output: `Script ${scriptId} executed at ${new Date().toLocaleTimeString()}`
+      });
+      
+      await refreshData();
+    } catch (error) {
+      console.error(`Error executing script ${scriptId}:`, error);
+    } finally {
+      setIsExecuting(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(scriptId);
+        return newSet;
+      });
+    }
+  };
+
+  return (
+    <Card className="bg-gray-900 border-cyan-400 border-opacity-30 shadow-lg shadow-cyan-400/20">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-cyan-400 font-mono text-center">
+          🎛 SYSTEM CONTROLS
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {CONTROL_SCRIPTS.map((script) => {
+            const isRunning = runningProcesses.has(script.id);
+            const isLoading = isExecuting.has(script.id);
+            const IconComponent = script.icon;
+            
+            return (
+              <div key={script.id} className="relative">
+                <Button
+                  onClick={() => executeScript(script.id)}
+                  disabled={isLoading}
+                  className={`
+                    w-full h-16 ${script.color} hover:opacity-80 
+                    text-black font-mono text-xs transition-all duration-200
+                    ${isRunning ? 'ring-2 ring-lime-400' : ''}
+                    ${isLoading ? 'animate-pulse' : ''}
+                  `}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <IconComponent className="w-4 h-4" />
+                    <span className="leading-tight">{script.label}</span>
+                  </div>
+                </Button>
+                
+                {isRunning && (
+                  <Badge 
+                    className="absolute -top-2 -right-2 bg-lime-400 text-black font-mono text-xs"
+                  >
+                    <div className="w-2 h-2 bg-lime-600 rounded-full animate-pulse mr-1" />
+                    ON
+                  </Badge>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

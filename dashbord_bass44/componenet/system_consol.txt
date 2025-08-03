@@ -1,0 +1,98 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Terminal, Trash2 } from "lucide-react";
+// import { SystemStatus } from "@/entities/SystemStatus"; // This import is no longer needed as data comes from props
+
+export default function SystemConsole({ systemStatuses }) { // Added systemStatuses prop
+  const [consoleOutput, setConsoleOutput] = useState([]);
+  const scrollAreaRef = useRef(null);
+
+  useEffect(() => {
+    // This effect now processes systemStatuses passed as a prop
+    if (systemStatuses) {
+      const output = systemStatuses
+        .filter(s => s.last_output)
+        .map(s => ({
+          id: s.id,
+          timestamp: new Date(s.updated_date),
+          process: s.process_name,
+          message: s.last_output,
+          isRunning: s.is_running
+        }))
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()); // Sort by timestamp
+      setConsoleOutput(output);
+    }
+  }, [systemStatuses]); // Depend on systemStatuses prop
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new output arrives
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [consoleOutput]);
+
+  const clearConsole = () => {
+    setConsoleOutput([]);
+  };
+
+  const formatTimestamp = (timestamp) => {
+    return timestamp.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+  };
+
+  return (
+    <Card className="bg-gray-900 border-cyan-400 border-opacity-30 shadow-lg shadow-cyan-400/20">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-cyan-400 font-mono flex items-center gap-2">
+            <Terminal className="w-5 h-5" />
+            💻 SYSTEM CONSOLE
+          </CardTitle>
+          <Button
+            onClick={clearConsole}
+            size="sm"
+            variant="outline"
+            className="border-red-400 text-red-400 hover:bg-red-400 hover:text-black font-mono"
+          >
+            <Trash2 className="w-4 h-4 mr-1" />
+            CLEAR
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ScrollArea className="h-64 p-4" ref={scrollAreaRef}>
+          <div className="font-mono text-sm space-y-1">
+            {consoleOutput.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">
+                SYSTEM READY - AWAITING COMMANDS
+              </div>
+            ) : (
+              consoleOutput.map((entry) => (
+                <div key={entry.id} className="flex items-start gap-2 py-1">
+                  <span className="text-gray-400 text-xs">
+                    [{formatTimestamp(entry.timestamp)}]
+                  </span>
+                  <span className={`text-xs font-semibold ${
+                    entry.isRunning ? 'text-lime-400' : 'text-orange-400'
+                  }`}>
+                    {entry.process.toUpperCase()}:
+                  </span>
+                  <span className="text-gray-300 text-xs flex-1">
+                    {entry.message}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}

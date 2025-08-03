@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yeast Control Panel</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body {
+      background: #0d101a;
+      color: #aeefff;
+      font-family: 'Fira Mono', 'Consolas', monospace;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0d1624;
+      padding: 0.8em 2.2em 0.8em 1.5em;
+      box-shadow: 0 0 16px #0ff2, 0 0 32px #00f5;
+      font-family: 'Orbitron', 'Fira Mono', monospace;
+    }
+    .header .phase {
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #d5ff46;
+      text-shadow: 0 0 10px #d5ff46, 0 0 18px #9eaa22;
+      letter-spacing: 0.12em;
+    }
+    .header h1 {
+      flex: 1;
+      text-align: center;
+      font-size: 2.5em;
+      letter-spacing: 0.17em;
+      color: #4cf3fa;
+      text-shadow: 0 0 18px #00f5;
+      margin: 0;
+    }
+    .header .clock {
+      color: #3cf2c5;
+      font-size: 1.2em;
+      font-family: 'Fira Mono', monospace;
+      text-shadow: 0 0 10px #0ff;
+    }
+    .main-row {
+      display: flex;
+      gap: 2em;
+      padding: 1.7em 2.3em 0.7em 2em;
+    }
+    .panel {
+      background: #181e2b;
+      border-radius: 13px;
+      box-shadow: 0 0 22px #00ffe333;
+      border: 2px solid #122244;
+      padding: 1.3em 1.3em 0.5em 1.3em;
+    }
+    .log-panel {
+      flex: 1.3;
+      margin-right: 0.8em;
+      max-width: 340px;
+      min-width: 200px;
+    }
+    .log-panel h2 {
+      color: #73e2ff;
+      font-weight: bold;
+      font-size: 1.2em;
+      letter-spacing: 0.11em;
+      margin: 0 0 0.5em 0;
+      display: flex;
+      align-items: center;
+    }
+    .log-panel h2 i { margin-right: 0.3em; }
+    .feedback-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .feedback-table th, .feedback-table td {
+      padding: 0.2em 0.8em;
+      font-size: 1.08em;
+      text-align: left;
+    }
+    .feedback-table th {
+      color: #7fffd4;
+      font-weight: 600;
+      background: none;
+      border-bottom: 1.5px solid #293966;
+      letter-spacing: 0.11em;
+    }
+    .feedback-table td { border-bottom: 1px solid #222b; }
+    .feedback-table td.val { color: #8dff8b; }
+    .feedback-table td.temp { color: #ffb266; }
+    .feedback-table td.time { color: #aac5d0; }
+
+    .chart-panel { flex: 2.7; margin-bottom: 1.6em; }
+    .chart-panel h2 {
+      color: #44e0ff;
+      font-size: 1.15em;
+      letter-spacing: 0.11em;
+      margin: 0 0 0.5em 0;
+      display: flex;
+      align-items: center;
+    }
+    .chart-panel .refresh-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.7em;
+      font-size: 1em;
+      margin-bottom: 0.3em;
+    }
+    .chart-panel button {
+      background: #07dfff;
+      color: #172635;
+      border: none;
+      border-radius: 7px;
+      padding: 0.2em 1.3em;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .chart-panel button:hover { background: #41c2ff; }
+    .system-paths-panel {
+      margin-top: 2em;
+    }
+    .system-paths-panel h2 {
+      color: #4cf3fa;
+      font-size: 1.09em;
+      margin-bottom: 0.4em;
+      letter-spacing: 0.13em;
+      display: flex; align-items: center;
+    }
+    .system-paths-panel h2 i { margin-right: 0.3em; }
+    .system-paths-panel .paths-table {
+      margin-top: 0.3em;
+      font-size: 1em;
+      color: #b2faff;
+    }
+    .system-paths-panel .paths-table td {
+      padding: 0.18em 0.4em 0.18em 1.7em;
+    }
+    /* --- Controls --- */
+    .controls-panel {
+      margin: 2.3em 2em 1.3em 2em;
+      padding: 1.3em 2em 1.2em 2em;
+      display: flex; flex-direction: column;
+    }
+    .controls-panel h2 {
+      color: #55f4ff;
+      font-size: 1.17em;
+      margin-bottom: 0.7em;
+      letter-spacing: 0.13em;
+      text-align: left;
+      font-weight: bold;
+    }
+    .control-btn-row {
+      display: flex;
+      gap: 1.3em;
+      margin-bottom: 1em;
+    }
+    .btn-block {
+      border-radius: 11px;
+      font-weight: 600;
+      padding: 0.7em 1.6em;
+      font-size: 1.12em;
+      letter-spacing: 0.05em;
+      box-shadow: 0 0 7px #00ffee55;
+      border: 2px solid #303040;
+      margin-right: 0.35em;
+      margin-bottom: 0.2em;
+      cursor: pointer;
+      background: #1e1f3d;
+      color: #eef;
+      transition: background 0.13s, color 0.13s;
+      display: flex; align-items: center; gap: 0.6em;
+    }
+    .btn-green { background: #25c942; color: #011; }
+    .btn-blue { background: #2194f3; color: #eef; }
+    .btn-yellow { background: #f8be3a; color: #001; }
+    .btn-purple { background: #a764fa; color: #eef; }
+    .btn-orange { background: #f8862c; color: #200; }
+    .btn-red { background: #e83a3a; color: #fff; }
+    .btn-block.on { box-shadow: 0 0 17px #93ff5a, 0 0 10px #39ff73; }
+    .btn-block.off { opacity: 0.77; }
+    .controls-panel .on-light {
+      width: 1.13em; height: 1.13em; background: #3df86d; border-radius: 50%; margin-left: 0.3em; border: 1.5px solid #155;
+      display: inline-block; vertical-align: middle;
+      box-shadow: 0 0 6px #57ff9b, 0 0 15px #1f7;
+    }
+    .controls-panel .off-light {
+      width: 1.13em; height: 1.13em; background: #1b2a2a; border-radius: 50%; margin-left: 0.3em; border: 1.5px solid #223;
+      display: inline-block; vertical-align: middle;
+      box-shadow: 0 0 0px #222;
+    }
+    .console-panel {
+      margin: 2.1em 2em 2.1em 2em;
+      background: #131c29;
+      border-radius: 13px;
+      box-shadow: 0 0 10px #005;
+      border: 2px solid #222a38;
+      padding: 1.5em 1.5em 1.1em 1.7em;
+    }
+    .console-panel h2 {
+      color: #73e2ff;
+      font-size: 1.09em;
+      font-weight: bold;
+      margin-bottom: 0.3em;
+      letter-spacing: 0.14em;
+      display: flex; align-items: center;
+    }
+    .console-panel h2 i { margin-right: 0.3em; }
+    .console-output {
+      background: #0a1320;
+      color: #82e4bb;
+      font-family: 'Fira Mono', 'Consolas', monospace;
+      border-radius: 8px;
+      font-size: 1em;
+      margin-top: 0.7em;
+      min-height: 120px;
+      max-height: 230px;
+      overflow-y: auto;
+      padding: 0.7em 1.1em;
+      border: 1.5px solid #1f2d36;
+      box-shadow: 0 0 8px #00e4ff22;
+    }
+    .clear-btn {
+      background: #ff4444;
+      color: #fff;
+      border-radius: 7px;
+      border: none;
+      font-weight: bold;
+      padding: 0.45em 1.7em;
+      font-size: 1em;
+      float: right;
+      margin-top: 0.4em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .clear-btn:hover { background: #fc8181; color: #300; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="phase" id="phase-label">PHASE: FEEDBACK</div>
+    <h1>YEAST CONTROL PANEL</h1>
+    <div class="clock" id="clock">12:46:31</div>
+  </div>
+  <div class="main-row">
+    <div class="panel log-panel">
+      <h2><i class="fa fa-file-alt"></i> FEEDBACK LOG</h2>
+      <table class="feedback-table">
+        <thead><tr><th>#</th><th>VAL</th><th>TEMP_SEND</th><th>TIME</th></tr></thead>
+        <tbody id="feedback-table-body">
+          <!-- JS will inject rows here -->
+        </tbody>
+      </table>
+    </div>
+    <div style="flex: 3.6; display: flex; flex-direction: column;">
+      <div class="panel chart-panel">
+        <h2><i class="fa fa-chart-line"></i> GFP + TEMPERATURE</h2>
+        <div class="refresh-bar">
+          <span>Last: <span id="lastUpdate">12:46:28</span></span>
+          <button id="refreshChartBtn">REFRESH</button>
+        </div>
+        <canvas id="gfpChart" width="800" height="300"></canvas>
+      </div>
+      <div class="panel system-paths-panel">
+        <h2><i class="fa fa-folder-open"></i> SYSTEM PATHS</h2>
+        <table class="paths-table">
+          <tr><td>AGG FOLDER:</td><td id="agg-path-cell">-</td></tr>
+          <tr><td>MQTT FOLDER:</td><td id="mqtt-path-cell">-</td></tr>
+          <tr><td>ANALYSE PATH:</td><td id="analyse-path-cell">-</td></tr>
+          <tr><td>GRAPH OUTPUT:</td><td id="graph-path-cell">-</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="panel controls-panel">
+    <h2><i class="fa fa-sliders-h"></i> SYSTEM CONTROLS</h2>
+    <!-- START NEW EXPERIMENT row -->
+    <div class="control-btn-row">
+      <button id="start-exp-btn" class="btn-block btn-green">START NEW EXPERIMENT</button>
+    </div>
+    <!-- TRACK TEMPERATURE row -->
+    <div class="control-btn-row">
+      <button id="track-temp-btn" class="btn-block btn-blue">TRACK TEMPERATURE <span id="mqtt-light" class="off-light"></span></button>
+    </div>
+    <!-- ACCLIMATION PHASE 1 row -->
+    <div class="control-btn-row">
+      <button id="start-acclimation-btn" class="btn-block btn-blue">START ACCLIMATION</button>
+      <input type="number" id="control-well" min="1" max="36" placeholder="Control #" style="width: 90px; margin-left: 12px;" />
+    </div>
+    <!-- ACCLIMATION PHASE 2 row -->
+    <div class="control-btn-row">
+      <button id="acclimation-phase2-btn" class="btn-block btn-yellow">SKIP TO RAMP UP</button>
+    </div>
+    <!-- ACCLIMATION STOP row -->
+    <div class="control-btn-row">
+      <button id="stop-acclimation-btn" class="btn-block btn-red">STOP ACCLIMATION</button>
+    </div>
+    <!-- FEEDBACK row -->
+    <div class="control-btn-row">
+      <button id="start-feedback-btn" class="btn-block btn-yellow">START FEEDBACK</button>
+      <input type="number" id="feedback-well" min="1" max="36" placeholder="Well #" style="width: 90px; margin-left: 12px;" />
+    </div>
+    <!-- BASELINE/ANALYZE row -->
+    <div class="control-btn-row">
+      <button class="btn-block btn-purple">RUN BASELINE <span class="on-light"></span></button>
+      <button id="analyze-btn" class="btn-block btn-purple">ANALYZE IMAGES <span id="analyze-light" class="off-light"></span></button>
+    </div>
+    <div class="control-btn-row">
+      <button class="btn-block btn-red">STOP FEEDBACK <span class="off-light"></span></button>
+      <button class="btn-block btn-orange">RESET SYSTEM <span class="off-light"></span></button>
+      <button class="btn-block btn-blue">CONFIGURE <span class="on-light"></span></button>
+      <button class="btn-block btn-blue">BACKUP DATA <span class="on-light"></span></button>
+    </div>
+  </div>
+  <div class="panel console-panel">
+    <h2><i class="fa fa-terminal"></i> SYSTEM CONSOLE</h2>
+    <button class="clear-btn" onclick="document.getElementById('console-output').innerText = '';">CLEAR</button>
+    <div class="console-output" id="console-output">
+      <!-- JS will append log lines here -->
+    </div>
+  </div>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- JS code for updating table, chart, clock etc. ייכנס כאן בהמשך -->
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js"></script>
+<script>
+// ---- HEADER CLOCK ----
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clock").innerText = now.toLocaleTimeString('en-GB');
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ---- LOAD PATHS ----
+function loadPaths() {
+  fetch('/get_paths')
+    .then(r=>r.json())
+    .then(data=>{
+      document.getElementById("agg-path-cell").innerText = data.agg_path || "-";
+      document.getElementById("mqtt-path-cell").innerText = data.mqtt_path || "-";
+      document.getElementById("analyse-path-cell").innerText = data.csv_directory || "-";
+      document.getElementById("graph-path-cell").innerText = data.csv_for_fig || "-";
+    });
+}
+loadPaths();
+
+// ---- FEEDBACK LOG TABLE ----
+function updateFeedbackTable() {
+  fetch('/api/feedback_log')
+    .then(r=>r.json())
+    .then(rows=>{
+      const tbody = document.getElementById("feedback-table-body");
+      tbody.innerHTML = "";
+      rows.forEach((row,i)=>{
+        const t = row.Time || row.time || "-";
+        tbody.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td class="val">${row.val ?? ""}</td>
+          <td class="temp">${row.Temp_sent ?? ""}</td>
+          <td class="time">${t}</td>
+        </tr>`;
+      });
+    });
+}
+updateFeedbackTable();
+setInterval(updateFeedbackTable, 600000);
+
+// ---- MAIN CHART ----
+let gfpChart;
+function refreshDualChart() {
+  fetch('/api/agg_dual')
+    .then(r=>r.json())
+    .then(data=>{
+      const ctx = document.getElementById("gfpChart").getContext("2d");
+      if (gfpChart) gfpChart.destroy();
+
+      // אוספים צבעים לכל באר בהתאם למצב
+      const phase = data.phase || "acclimation";
+      const wells = data.wells || Object.keys(data.gfp_by_well||{});
+      const highlightWell = 1;
+
+      const datasets = wells.map((well, idx) => {
+        let color = "gray";
+        if (phase === "acclimation") {
+          color = `hsl(${(idx*37)%360},74%,54%)`;
+        } else if (phase==="feedback" && Number(well)===highlightWell) {
+          color = "salmon";
+        }
+        return {
+          label: `Well ${well}`,
+          data: data.gfp_by_well[well] || [],
+          borderColor: color,
+          backgroundColor: "transparent",
+          yAxisID: 'y',
+          tension: 0.3
+        }
+      });
+      datasets.push({
+        label: 'Temperature',
+        data: data.temp || [],
+        borderColor: "aqua",
+        yAxisID: "y1",
+        tension: 0.25
+      });
+
+      gfpChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: data.timestamps || [], datasets },
+        options: {
+          responsive: true,
+          scales: {
+            y: { type:'linear', position:'left', title:{display:true,text:'GFP'} },
+            y1:{ type:'linear',position:'right',title:{display:true,text:'Temp °C'},grid:{drawOnChartArea:false}}
+          }
+        }
+      });
+      document.getElementById("lastUpdate").innerText = new Date().toLocaleTimeString();
+    });
+}
+refreshDualChart();
+document.getElementById("refreshChartBtn").onclick = refreshDualChart;
+
+// ---- PHASE STATUS ----
+function updatePhaseStatus() {
+  fetch('/api/experiment_phase')
+    .then(r=>r.json())
+    .then(data=>{
+      const label = document.getElementById("phase-label");
+      if (data.phase === "feedback") {
+        label.innerText = "PHASE: FEEDBACK";
+        label.style.color = "#ffb155";
+      } else {
+        label.innerText = "PHASE: ACCLIMATION";
+        label.style.color = "#d5ff46";
+      }
+    });
+}
+updatePhaseStatus();
+setInterval(updatePhaseStatus, 15000);
+
+// ---- CONTROL BUTTONS ----
+// START NEW EXPERIMENT button
+document.getElementById("start-exp-btn").onclick = function() {
+  this.disabled = true;
+  fetch('/make_dir')
+    .then(res=>res.json())
+    .then(data=>{
+      this.classList.add("on");
+      this.classList.remove("off");
+      this.disabled = false;
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+        document.getElementById("console-output").innerText;
+      // טען נתיבים מחדש
+      loadPaths();
+    });
+}
+
+// ---- STATUS LIGHTS (on/off) ----
+function updateButtonLights() {
+  fetch('/running_processes')
+    .then(r=>r.json())
+    .then(data=>{
+      const ids = ["start-exp","start-acclimation","start-feedback","run-baseline","stop-feedback","reset","config","backup"];
+      ids.forEach((id,i)=>{
+        const btn = document.querySelectorAll(".btn-block")[i];
+        if(!btn) return;
+        const on = data.processes && data.processes.includes(id.replace(/-/g,"_"));
+        btn.classList.toggle("on", on);
+        btn.classList.toggle("off", !on);
+      });
+    });
+}
+updateButtonLights();
+setInterval(updateButtonLights, 8000);
+
+// ---- CLEAR CONSOLE ----
+document.querySelector(".clear-btn").onclick = ()=>{ document.getElementById("console-output").innerText = ""; };
+
+// ---- TRACK TEMPERATURE BUTTON (MQTT) ----
+document.getElementById("track-temp-btn").onclick = function() {
+  const on = this.classList.contains("on");
+  this.disabled = true;
+  fetch(on ? "/stop_mqtt" : "/start_mqtt")
+    .then(res=>res.json())
+    .then(data=>{
+      this.classList.toggle("on", !on);
+      this.classList.toggle("off", on);
+      this.disabled = false;
+      updateMqttLight();
+      updateMqttLog();
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+        document.getElementById("console-output").innerText;
+    });
+}
+
+// עדכון נורה לפי מצב mqtt
+function updateMqttLight() {
+  fetch('/running_processes')
+    .then(res=>res.json())
+    .then(data=>{
+      const on = data.processes && data.processes.includes('mqtt');
+      document.getElementById('mqtt-light').className = on ? 'on-light' : 'off-light';
+    });
+}
+setInterval(updateMqttLight, 5000); updateMqttLight();
+
+// קריאת לוג mqtt לקונסולה
+function updateMqttLog() {
+  fetch('/mqtt_log')
+    .then(res=>res.json())
+    .then(data=>{
+      if (data.log) {
+        document.getElementById('console-output').innerText = data.log;
+      }
+    });
+}
+setInterval(updateMqttLog, 4000); // כל 4 שניות ריענון קונסולה
+
+</script>
+<script>
+// ---- ACCLIMATION PHASE BUTTONS ----
+document.getElementById("start-acclimation-btn").addEventListener("click", function () {
+  fetch("/start_acclimation_phase1")
+    .then((res) => res.json())
+    .then((data) => {
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status}\n` +
+        document.getElementById("console-output").innerText;
+    });
+});
+
+document.getElementById("acclimation-phase2-btn").addEventListener("click", function () {
+  fetch("/start_acclimation_phase2")
+    .then((res) => res.json())
+    .then((data) => {
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status}\n` +
+        document.getElementById("console-output").innerText;
+    });
+});
+
+document.getElementById("stop-acclimation-btn").addEventListener("click", function () {
+  fetch("/stop_acclimation")
+    .then((res) => res.json())
+    .then((data) => {
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status}\n` +
+        document.getElementById("console-output").innerText;
+    });
+});
+</script>
+<script>
+// ---- START FEEDBACK BUTTON WITH WELL SELECTION ----
+document.getElementById("start-feedback-btn").onclick = function() {
+  const isOn = this.classList.contains("on");
+
+  if (isOn) {
+    fetch('/stop_feedback')
+      .then(res => res.json())
+      .then(data => {
+        this.classList.remove("on");
+        document.getElementById("console-output").innerText =
+          `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+          document.getElementById("console-output").innerText;
+      });
+  } else {
+    const well = parseInt(document.getElementById("feedback-well").value);
+    if (isNaN(well) || well < 1 || well > 36) {
+      alert("Please enter a valid well number (1–36)");
+      return;
+    }
+
+    fetch('/start_feedback', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ well })
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.classList.add("on");
+      document.getElementById("console-output").innerText =
+        `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+        document.getElementById("console-output").innerText;
+    })
+    .catch(error => {
+      console.error("Error:", error);
+    });
+  }
+};
+</script>
+</html>
+</script>
+<script>
+// ---- START ACCLIMATION BUTTON WITH CONTROL WELL ----
+document.getElementById("start-acclimation-btn").onclick = function() {
+  const control = parseInt(document.getElementById("control-well").value);
+  if (isNaN(control) || control < 1 || control > 36) {
+    alert("Please enter a valid control well (1–36)");
+    return;
+  }
+
+  fetch('/start_acclimation', {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ control_well: control })
+  })
+  .then(res => res.json())
+  .then(data => {
+    this.classList.add("on");
+    this.disabled = false;
+    document.getElementById("console-output").innerText =
+      `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+      document.getElementById("console-output").innerText;
+  })
+  .catch(error => {
+    console.error("Error:", error);
+  });
+};
+</script>
+<script>
+// ---- ANALYZE CONTROL PANEL BUTTON ----
+document.getElementById("analyze-btn").onclick = async function() {
+  const on = this.classList.contains("on");
+  if (on) {
+    // Stop analyze script
+    fetch("/stop_analyze")
+      .then(r => r.json())
+      .then(data => {
+        this.classList.remove("on");
+        this.classList.add("off");
+        document.getElementById("analyze-light").className = "off-light";
+        logToConsole(data.status || "Analyze stopped.");
+      });
+  } else {
+    // Choose folder
+    const handle = await window.showDirectoryPicker().catch(() => null);
+    if (!handle) return;
+
+    const path = await handle.name;
+    fetch("/start_analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder_name: path })
+    })
+    .then(r => r.json())
+    .then(data => {
+      this.classList.add("on");
+      this.classList.remove("off");
+      document.getElementById("analyze-light").className = "on-light";
+      logToConsole(data.status || "Analyze started.");
+    });
+  }
+};
+
+function logToConsole(msg) {
+  document.getElementById("console-output").innerText =
+    `[${new Date().toLocaleTimeString()}] ${msg}\n` +
+    document.getElementById("console-output").innerText;
+}

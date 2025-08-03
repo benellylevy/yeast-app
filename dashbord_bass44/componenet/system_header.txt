@@ -1,0 +1,67 @@
+
+import React, { useState, useEffect } from 'react';
+import { ExperimentData } from "@/entities/ExperimentData";
+
+export default function SystemHeader({ experimentData }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [experimentPhase, setExperimentPhase] = useState('IDLE');
+
+  useEffect(() => {
+    // Update clock every second
+    const clockInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => {
+      clearInterval(clockInterval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (experimentData && experimentData.length > 0) {
+      // Get the latest phase from the data
+      setExperimentPhase(experimentData[0].experiment_phase?.toUpperCase() || 'IDLE');
+    }
+  }, [experimentData]);
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  const getPhaseColor = (phase) => {
+    switch (phase) {
+      case 'ACCLIMATION': return 'text-blue-400';
+      case 'FEEDBACK': return 'text-lime-400';
+      case 'BASELINE': return 'text-purple-400';
+      default: return 'text-orange-400';
+    }
+  };
+
+  return (
+    <div className="relative flex items-center justify-center py-6 px-8">
+      {/* Experiment Phase Label */}
+      <div className="absolute left-8 top-1/2 transform -translate-y-1/2">
+        <div className={`font-mono text-2xl ${getPhaseColor(experimentPhase)} text-shadow-glow`}>
+          PHASE: {experimentPhase}
+        </div>
+      </div>
+
+      {/* Main Title */}
+      <h1 className="text-4xl font-bold text-cyan-400 text-center font-mono text-shadow-glow">
+        🧬 YEAST CONTROL PANEL
+      </h1>
+
+      {/* Digital Clock */}
+      <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+        <div className="font-mono text-2xl text-cyan-400 text-shadow-glow">
+          {formatTime(currentTime)}
+        </div>
+      </div>
+    </div>
+  );
+}

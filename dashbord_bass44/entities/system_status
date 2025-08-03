@@ -1,0 +1,38 @@
+{
+  "name": "SystemStatus",
+  "type": "object",
+  "properties": {
+    "process_name": {
+      "type": "string",
+      "description": "Name of the system process"
+    },
+    "is_running": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the process is currently running"
+    },
+    "last_output": {
+      "type": "string",
+      "description": "Latest output from the process"
+    },
+    "agg_folder": {
+      "type": "string",
+      "description": "AGG folder path"
+    },
+    "mqtt_folder": {
+      "type": "string",
+      "description": "MQTT folder path"
+    },
+    "analyse_path": {
+      "type": "string",
+      "description": "Analysis script path"
+    },
+    "graph_output_path": {
+      "type": "string",
+      "description": "Graph output path"
+    }
+  },
+  "required": [
+    "process_name"
+  ]
+}

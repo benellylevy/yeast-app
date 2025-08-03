@@ -1,0 +1,167 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, TrendingUp } from "lucide-react";
+
+export default function RealtimeChart({ experimentData, refreshData }) {
+  const canvasRef = useRef(null);
+  const [lastUpdate, setLastUpdate] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (experimentData && experimentData.length > 0) {
+      const gfpData = experimentData.map(d => ({ x: new Date(d.timestamp), y: d.gfp_value }));
+      const tempData = experimentData.map(d => ({ x: new Date(d.timestamp), y: d.temperature }));
+      
+      setLastUpdate(new Date().toLocaleTimeString());
+      drawChart(gfpData, tempData);
+    }
+  }, [experimentData]);
+
+  const drawChart = (gfpData, tempData) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+    
+    // Clear canvas
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, width, height);
+    
+    if (gfpData.length === 0) return;
+    
+    // Chart margins
+    const margin = { top: 20, right: 80, bottom: 40, left: 60 };
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    
+    // Find data ranges
+    const allTimes = [...gfpData.map(d => d.x), ...tempData.map(d => d.x)];
+    const minTime = Math.min(...allTimes);
+    const maxTime = Math.max(...allTimes);
+    
+    const gfpValues = gfpData.map(d => d.y);
+    const tempValues = tempData.map(d => d.y);
+    
+    const minGfp = Math.min(...gfpValues);
+    const maxGfp = Math.max(...gfpValues);
+    const minTemp = Math.min(...tempValues);
+    const maxTemp = Math.max(...tempValues);
+    
+    // Draw grid
+    ctx.strokeStyle = '#00ffcc22';
+    ctx.lineWidth = 1;
+    
+    // Vertical grid lines
+    for (let i = 0; i <= 10; i++) {
+      const x = margin.left + (i * chartWidth / 10);
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, height - margin.bottom);
+      ctx.stroke();
+    }
+    
+    // Horizontal grid lines
+    for (let i = 0; i <= 8; i++) {
+      const y = margin.top + (i * chartHeight / 8);
+      ctx.beginPath();
+      ctx.moveTo(margin.left, y);
+      ctx.lineTo(width - margin.right, y);
+      ctx.stroke();
+    }
+    
+    // Draw GFP line
+    if (gfpData.length > 1) {
+      ctx.strokeStyle = '#00ffcc';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      gfpData.forEach((point, index) => {
+        const x = margin.left + ((point.x - minTime) / (maxTime - minTime)) * chartWidth;
+        const y = height - margin.bottom - ((point.y - minGfp) / (maxGfp - minGfp)) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+    
+    // Draw Temperature line
+    if (tempData.length > 1) {
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      tempData.forEach((point, index) => {
+        const x = margin.left + ((point.x - minTime) / (maxTime - minTime)) * chartWidth;
+        const y = height - margin.bottom - ((point.y - minTemp) / (maxTemp - minTemp)) * chartHeight;
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+    
+    // Draw labels
+    ctx.fillStyle = '#00ffcc';
+    ctx.font = '12px "Courier New", monospace';
+    ctx.fillText('GFP', width - 70, 30);
+    
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText('TEMP', width - 70, 50);
+    
+    // Draw axes labels
+    ctx.fillStyle = '#cccccc';
+    ctx.font = '10px "Courier New", monospace';
+    ctx.fillText(`GFP: ${minGfp.toFixed(1)} - ${maxGfp.toFixed(1)}`, 10, 20);
+    ctx.fillText(`TEMP: ${minTemp.toFixed(1)}°C - ${maxTemp.toFixed(1)}°C`, 10, 35);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  return (
+    <Card className="bg-gray-900 border-cyan-400 border-opacity-30 shadow-lg shadow-cyan-400/20">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-cyan-400 font-mono flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            📈 GFP + TEMPERATURE
+          </CardTitle>
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-sm font-mono">
+              Last: {lastUpdate}
+            </span>
+            <Button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              size="sm"
+              className="bg-cyan-400 hover:bg-cyan-300 text-black font-mono"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              REFRESH
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <canvas
+          ref={canvasRef}
+          width={840}
+          height={360}
+          className="border border-cyan-400 border-opacity-30 rounded-lg bg-black shadow-inner"
+        />
+      </CardContent>
+    </Card>
+  );
+}

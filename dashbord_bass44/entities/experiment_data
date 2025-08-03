@@ -1,0 +1,34 @@
+{
+  "name": "ExperimentData",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the data was recorded"
+    },
+    "gfp_value": {
+      "type": "number",
+      "description": "GFP fluorescence reading"
+    },
+    "temperature": {
+      "type": "number",
+      "description": "Temperature reading in Celsius"
+    },
+    "experiment_phase": {
+      "type": "string",
+      "enum": [
+        "acclimation",
+        "feedback",
+        "baseline",
+        "idle"
+      ],
+      "default": "idle",
+      "description": "Current experiment phase"
+    }
+  },
+  "required": [
+    "gfp_value",
+    "temperature"
+  ]
+}
