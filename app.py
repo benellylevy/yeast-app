@@ -1,3 +1,4 @@
+
 # Imports - כל הספריות והמודולים הדרושים
 import os
 import json
@@ -98,6 +99,48 @@ def set_paths():
 
     return jsonify({"status": "paths and wells set"})
 
+# ===================
+# טעינת ניסוי מהבראוזר - API חדש
+
+@app.route("/load_experiment", methods=["POST"])
+def load_experiment():
+    """
+    טוען ניסוי קיים לפי folder_name שנבחר מהבראוזר,
+    מעדכן config/session_config.json בהתאם.
+    """
+    try:
+        data = request.get_json()
+        folder_name = data.get("folder_name")
+        if not folder_name:
+            return jsonify({"error": "No folder_name provided"}), 400
+
+        config_path = os.path.join(folder_name, "config.json")
+        if not os.path.exists(config_path):
+            return jsonify({"error": "config.json not found in folder"}), 404
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        mqtt_path = config.get("mqtt_path", folder_name)
+
+        session_config = {
+            "paths": {
+                "agg_path": folder_name,
+                "mqtt_path": mqtt_path
+            },
+            "parameters": {
+                "well_numbers": list(range(1, 37))
+            }
+        }
+
+        os.makedirs("config", exist_ok=True)
+        with open("config/session_config.json", "w", encoding="utf-8") as f:
+            json.dump(session_config, f, indent=2)
+
+        return jsonify({"status": f"Experiment path loaded: {folder_name}"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 # ===================
 # ניהול סקריפטים (הרצה, סטטוס, עצירה)
 
@@ -246,13 +289,7 @@ def start_feedback():
     run_script("start_feedback", "scripts/secure_feedback_precent.py")
     return jsonify({"status": f"started feedback with well {well}"})
 
-@app.route("/stop_feedback")
-def stop_feedback():
-    proc = processes.get("start_feedback")
-    if proc:
-        proc.terminate()
-        return jsonify({"status": "feedback stopped"})
-    return jsonify({"status": "feedback not running"}), 404
+
 
 @app.route("/start_plot")
 def start_plot():
@@ -482,11 +519,4 @@ def load_existing_experiment():
 # סיום: הרצת השרת
 
 if __name__ == "__main__":
-    app.run(debug=True)
-@app.route("/stop_feedback")
-def stop_feedback():
-    proc = processes.get("start_feedback")
-    if proc:
-        proc.terminate()
-        return jsonify({"status": "feedback stopped"})
-    return jsonify({"status": "feedback not running"}), 404
+    app.run(debug=True ,port=5050)

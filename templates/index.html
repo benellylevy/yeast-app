@@ -278,6 +278,10 @@
   </div>
   <div class="panel controls-panel">
     <h2><i class="fa fa-sliders-h"></i> SYSTEM CONTROLS</h2>
+    <!-- LOAD EXPERIMENT row -->
+    <div class="control-btn-row">
+      <button id="load-exp-btn" class="btn-block btn-orange">LOAD EXPERIMENT</button>
+    </div>
     <!-- START NEW EXPERIMENT row -->
     <div class="control-btn-row">
       <button id="start-exp-btn" class="btn-block btn-green">START NEW EXPERIMENT</button>
@@ -664,3 +668,24 @@ function logToConsole(msg) {
     `[${new Date().toLocaleTimeString()}] ${msg}\n` +
     document.getElementById("console-output").innerText;
 }
+</script>
+<script>
+// ---- LOAD EXPERIMENT BUTTON ----
+document.getElementById("load-exp-btn").onclick = async function () {
+  const handle = await window.showDirectoryPicker().catch(() => null);
+  if (!handle) return;
+
+  const path = handle.name;
+  fetch("/load_experiment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder_name: path })
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById("console-output").innerText =
+      `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
+      document.getElementById("console-output").innerText;
+    loadPaths(); // ריענון נתיבים
+  });
+};

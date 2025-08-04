@@ -1,99 +1,152 @@
+# 🧬 Yeast Control Panel – Intelligent Web-Based Experiment Manager
 
-
-# 🧬 Yeast Control Panel – Web-Based Experiment Manager
-
-מערכת שליטה ובקרה בזמן אמת לניסוי שמבוסס על אקלימציה, מדידת טמפרטורה, אנליזה של תמונות, ופידבק ביולוגי.
+A full-stack web interface (Flask + HTML/JS + Python) for managing live, image-based yeast experiments involving temperature acclimation, fluorescence expression (GFP), and real-time feedback control.
 
 ---
 
-## 📦 מה כוללת המערכת?
+## 🧪 What Is This Experiment?
 
-- ממשק אינטרנטי (Flask + HTML/JS) לניהול הניסוי
-- גרף חי: GFP + טמפרטורה (שני צירים)
-- טבלת לוגים (Feedback)
-- שליטה על סקריפטים בלחיצת כפתור
-- רמזורים סטטיים (נורות ירוקות לסקריפטים פעילים)
-- אזור פלט חי לכל פעולה
-- תיעוד נתיבים נוכחיים + אפשרות עדכון בזמן אמת
+This system is designed to monitor and regulate **yeast cell cultures** grown on a microfluidic chip under a microscope. The cells express GFP (Green Fluorescent Protein) as a function of stress. The goal is to:
+
+- Maintain cells under **acclimation conditions**
+- Slowly raise the temperature to stress levels (from 30°C to 39°C)
+- Monitor the **GFP signal** in selected wells
+- Trigger real-time **feedback loops** to control stress using external temperature changes
 
 ---
 
-## 🧭 איך מפעילים ניסוי חדש?
+## 📦 Features of the Control Panel
 
-### 1. **הכן את סביבת העבודה**
-- פתח את VSCode או הטרמינל
-- ודא שאתה נמצא בתוך הסביבה `cellpose` של Anaconda
+- Web-based control interface via Flask
+- Realtime plots: GFP expression + chip temperature
+- Feedback log display
+- Live logs of MQTT temperature values
+- Buttons to start/stop each experiment phase
+- Green indicators to show active scripts
+- Configuration saved between runs
+
+---
+
+## 💻 Installation & Setup
+
+1. **Create and activate environment** (recommended: `cellpose`)
 
 ```bash
 conda activate cellpose
-cd yeast-app/
 ```
+
+2. **Clone the project and install dependencies**
+
+```bash
+git clone https://github.com/YOUR_USERNAME/yeast-app.git
+cd yeast-app
+pip install -r requirements.txt
+```
+
+3. **Ensure your folder is writable**
+- The project writes logs and config files to `config/` and into experiment folders you define.
 
 ---
 
-### 2. **הפעל את הממשק**
+## 🧭 Folder Structure per Experiment
+
+When you click "Start New Experiment", the following structure is created:
+
+```
+WELLS_YYYYMMDD/
+├── IMG/
+├── TEMP/
+│   └── YYYYMMDDhh/
+├── AGG_CSV/
+├── AGG_CSV_FIGS/
+├── MOVIES/
+├── IMG_CSV/
+├── config.json
+```
+
+The main config paths are written into `config/session_config.json` and persist throughout the session.
+
+---
+
+## 🚀 Running the System
+
+1. **Start the server**
 
 ```bash
 python app.py
 ```
 
-- כנס לדפדפן:
+2. **Open the UI in a browser**
+
 ```
 http://localhost:5000
 ```
 
----
-
-### 3. **בצע את הצעדים לפי הסדר הבא**
-
-| שלב                     | פעולה שאתה עושה בממשק |
-|--------------------------|------------------------|
-| 📁 יצירת תיקיית ניסוי    | לחץ על `Make Dir`      |
-| 📡 התחלת מדידת טמפרטורה | לחץ על `mqtt → Patch` |
-| 🕐 המתן לאקלימציה         | 24 שעות או כפי שתבחר   |
-| 🧪 עדכון תיקיית תמונות   | פתח את "Show/Update analyse path" ועדכן |
-| 🔍 הרץ `analyse`         | לחץ על `analyse → Patch` |
-| 🔁 הפעלת פידבק           | לחץ על `Feedback ON/OFF` |
+3. **Click through the experiment steps as shown below.**
 
 ---
 
-## 📂 קבצי תצורה
+## 📋 Experiment Flow & Button Guide
 
-### config/session_config.json  
-קובץ גלובלי שמתעדכן אוטומטית בכל `Make Dir`:
+| Step | Button | Description |
+|------|--------|-------------|
+| 1️⃣ | **Start New Experiment** | Creates new folder and config structure |
+| 2️⃣ | **Track Temperature** | Starts `mqtt.py`, logs live JSON temperature files |
+| 3️⃣ | **Start Acclimation** | Starts 30°C acclimation phase (phase 1) |
+| 4️⃣ | **Skip to Ramp Up** | Starts temperature ramping (30°C → 39°C) over ~12h |
+| 5️⃣ | **Analyze Images** | Prompts folder selection (e.g. `IMG/01/`), runs analysis |
+| 6️⃣ | **Start Feedback** | Activates real-time feedback loop (uses `secure_feedback_precent.py`) |
+| 7️⃣ | **Stop Feedback / Acclimation** | Terminates running scripts |
+| 🛠️ | **Compute Baseline** | Uses CSVs to determine baseline GFP value |
+| 🧠 | **Graph Display** | Shows dual graph: GFP + Temperature from live data |
+
+---
+
+## 🔧 Config Files
+
+### `config/session_config.json`
+
+Stores persistent paths and parameters:
 
 ```json
 {
   "paths": {
-    "agg_path": "B:/my_experiment/WELLS_20250731",
-    "mqtt_path": "B:/my_experiment/WELLS_20250731/TEMP"
+    "agg_path": "B:/my_experiment/WELLS_20250804",
+    "mqtt_path": "B:/my_experiment/WELLS_20250804/TEMP/2025080400"
   },
-  "parameters": {
-    "well_numbers": [1, 2, ..., 36]
-  }
+  "highlight_well": 8,
+  "control_well": 36
 }
 ```
 
-### config.json  
-בתוך כל ניסוי, כולל את כל הנתיבים הרלוונטיים לקבצי פלט.  
-משמש את mqtt/analyse.
+### `config.json` (inside experiment folder)
+
+Used by all scripts. Stores temp folder, output files, baseline values.
 
 ---
 
-## 🔥 הערות חשובות
+## 📈 Scripts Controlled
 
-- את `Make Dir` מריצים **רק פעם אחת** בתחילת הניסוי
-- `mqtt.py` ו־`analyse.py` רצים עם נתיב שנשלף מתוך `config.json` בהתאם לניסוי הנוכחי
-- טבלת הלוג מתמלאת אוטומטית **רק כשנוצר הקובץ `Feedback_log.csv`**
-- הנתיבים לבארות (`well_numbers`) מוגדרים כברירת מחדל ל־1 עד 36, אך ניתן לשנות ידנית ב־config
-
----
-
-## 👤 קרדיט
-
-פותח ע"י [Ben Ellevy]  
-לצורך ניסויים ביולוגיים מתקדמים בזמן אמת.
+| Script | Purpose |
+|--------|---------|
+| `start_1.py` | Creates new experiment folders and base config |
+| `mqtt.py` | Listens to external MQTT broker and logs temperature |
+| `analaize.py` | Processes microscope images and outputs CSVs |
+| `acclimation_phased.py` | 3-phase acclimation: 30°C hold, ramp-up, final hold |
+| `secure_feedback_precent.py` | Core feedback loop using GFP → temperature mapping |
+| `baseline.py` | Calculates baseline GFP expression |
 
 ---
 
-📍 לעזרה, שאלה או תמיכה – פנה אליי ישירות או השאר issue.
+## 🔐 Safety & Tips
+
+- Never commit your Telegram bot token – use placeholders or `.env`
+- Don't reuse experiment folders between runs
+- All dynamic parameters are stored in config files
+- You can stop any script at any time using the UI
+
+---
+
+## 🧠 Created by Ben Ellevy
+
+Designed for intelligent, flexible, real-time experimentation with genetically engineered yeast.
