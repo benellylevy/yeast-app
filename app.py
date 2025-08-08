@@ -478,42 +478,6 @@ def stop_analyze():
         return jsonify({"status": "analyze stopped"})
     return jsonify({"status": "analyze not running"}), 404
 
-# ===================
-# טעינת ניסוי קיים
-
-@app.route("/load_existing_experiment", methods=["POST"])
-def load_existing_experiment():
-    """
-    מאפשר לטעון ניסוי קיים על ידי מתן path לתיקייה עם config.json תקין
-    """
-    try:
-        data = request.json
-        experiment_folder = data.get("path")
-        if not experiment_folder:
-            return jsonify({"error": "Missing path"}), 400
-        config_path = os.path.join(experiment_folder, "config.json")
-        if not os.path.exists(config_path):
-            return jsonify({"error": "config.json not found in selected folder"}), 400
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        # get mqtt_path from config (if exists), else use experiment_folder
-        mqtt_path = config.get("mqtt_path", experiment_folder)
-        # שמור גם את הקונפיג הכללי
-        config_data = {
-            "paths": {
-                "agg_path": experiment_folder,
-                "mqtt_path": mqtt_path
-            },
-            "parameters": {
-                "well_numbers": list(range(1, 37))
-            }
-        }
-        os.makedirs("config", exist_ok=True)
-        with open("config/session_config.json", "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=2)
-        return jsonify({"status": f"Loaded experiment from {experiment_folder}"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 # ===================
 # סיום: הרצת השרת

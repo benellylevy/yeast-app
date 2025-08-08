@@ -530,16 +530,6 @@ setInterval(updateMqttLog, 4000); // כל 4 שניות ריענון קונסול
 </script>
 <script>
 // ---- ACCLIMATION PHASE BUTTONS ----
-document.getElementById("start-acclimation-btn").addEventListener("click", function () {
-  fetch("/start_acclimation_phase1")
-    .then((res) => res.json())
-    .then((data) => {
-      document.getElementById("console-output").innerText =
-        `[${new Date().toLocaleTimeString()}] ${data.status}\n` +
-        document.getElementById("console-output").innerText;
-    });
-});
-
 document.getElementById("acclimation-phase2-btn").addEventListener("click", function () {
   fetch("/start_acclimation_phase2")
     .then((res) => res.json())
@@ -669,6 +659,7 @@ function logToConsole(msg) {
     document.getElementById("console-output").innerText;
 }
 </script>
+</script>
 <script>
 // ---- LOAD EXPERIMENT BUTTON ----
 document.getElementById("load-exp-btn").onclick = async function () {
@@ -689,3 +680,4 @@ document.getElementById("load-exp-btn").onclick = async function () {
     loadPaths(); // ריענון נתיבים
   });
 };
+</script>
