@@ -5,6 +5,8 @@ import json
 import glob
 import subprocess
 import threading
+import sys
+import tempfile
 from datetime import datetime
 
 import pandas as pd
@@ -22,6 +24,32 @@ CORS(app)  # מאפשר CORS לכולם
 processes = {}  # מילון לשמירת תהליכים שרצים ברקע
 
 # ===================
+# Helper functions for session config
+
+def load_session_config():
+    """Load session config from config/session_config.json, or return empty dict if not found."""
+    try:
+        with open("config/session_config.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_session_config(config):
+    """Atomically save session config to config/session_config.json."""
+    os.makedirs("config", exist_ok=True)
+    temp_fd, temp_path = tempfile.mkstemp(dir="config", prefix="session_config_", suffix=".json")
+    try:
+        with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+        os.replace(temp_path, "config/session_config.json")
+    finally:
+        try:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except Exception:
+            pass
+
+# ===================
 # פונקציות עזר - פונקציות שמבצעות פעולות חוזרות ונשנות
 
 def run_script(name, path):
@@ -33,10 +61,15 @@ def run_script(name, path):
     if name in processes:
         return
     def _run():
+        python_exe = sys.executable
         if isinstance(path, list):
-            cmd = ['python'] + path if isinstance(path[0], str) and not path[0].endswith('.py') else path
+            # If first arg is .py file, prepend python_exe
+            if isinstance(path[0], str) and path[0].endswith(".py"):
+                cmd = [python_exe] + path
+            else:
+                cmd = path
         else:
-            cmd = ['python', path]
+            cmd = [python_exe, path]
         processes[name] = subprocess.Popen(cmd)
         processes[name].wait()
         del processes[name]
@@ -84,23 +117,30 @@ def set_paths():
     כולל גם רשימת מספרי בארות (well_numbers).
     """
     data = request.json
-    session["agg_path"] = data.get("agg_path")
-    session["mqtt_path"] = data.get("mqtt_path")
+    agg_path = data.get("agg_path")
+    mqtt_path = data.get("mqtt_path")
+    well_numbers = data.get("well_numbers", list(range(1, 37)))
+    # Validation
+    if not isinstance(agg_path, str) or not agg_path:
+        return jsonify({"error": "agg_path must be a non-empty string"}), 400
+    if not isinstance(mqtt_path, str) or not mqtt_path:
+        return jsonify({"error": "mqtt_path must be a non-empty string"}), 400
+    if not isinstance(well_numbers, list) or not all(isinstance(w, int) for w in well_numbers):
+        return jsonify({"error": "well_numbers must be a list of ints"}), 400
+
+    session["agg_path"] = agg_path
+    session["mqtt_path"] = mqtt_path
 
     config_data = {
         "paths": {
-            "agg_path": data.get("agg_path"),
-            "mqtt_path": data.get("mqtt_path")
+            "agg_path": agg_path,
+            "mqtt_path": mqtt_path
         },
         "parameters": {
-            "well_numbers": data.get("well_numbers", list(range(1, 37)))
+            "well_numbers": well_numbers
         }
     }
-
-    os.makedirs("config", exist_ok=True)
-    with open("config/session_config.json", "w") as f:
-        json.dump(config_data, f, indent=2)
-
+    save_session_config(config_data)
     return jsonify({"status": "paths and wells set"})
 
 # ===================
@@ -137,10 +177,7 @@ def load_experiment():
             }
         }
 
-        os.makedirs("config", exist_ok=True)
-        with open("config/session_config.json", "w", encoding="utf-8") as f:
-            json.dump(session_config, f, indent=2)
-
+        save_session_config(session_config)
         return jsonify({"status": f"Experiment path loaded: {folder_name}"})
 
     except Exception as e:
@@ -258,39 +295,46 @@ def mqtt_log():
     
 @app.route("/start_feedback", methods=["POST"])
 def start_feedback():
-    data = request.get_json()
-    well = data.get("well", 1)
-    control = data.get("control_well", None)
-
-    # עדכון config.json וגם session_config.json
     try:
+        data = request.get_json()
+        well = data.get("well")
+        control = data.get("control_well")
+
+        if not isinstance(well, int) or not (1 <= well <= 36):
+            return jsonify({"error": "Invalid well number"}), 400
+        if control is not None and (not isinstance(control, int) or not (1 <= control <= 36)):
+            return jsonify({"error": "Invalid control well number"}), 400
+
         with open("config/session_config.json", "r") as f:
             session_config = json.load(f)
+
         agg_path = session_config["paths"]["agg_path"]
         config_path = os.path.join(agg_path, "config.json")
+
         if os.path.exists(config_path):
             with open(config_path, "r") as f2:
                 config = json.load(f2)
         else:
             config = {}
+
         config["highlight_well"] = well
         if control is not None:
             config["control_well"] = control
-        with open(config_path, "w", encoding="utf-8") as f2:
+        with open(config_path, "w") as f2:
             json.dump(config, f2, indent=4)
 
-        # עדכן גם session_config.json
         session_config["highlight_well"] = well
         if control is not None:
             session_config["control_well"] = control
-        with open("config/session_config.json", "w", encoding="utf-8") as f:
+        with open("config/session_config.json", "w") as f:
             json.dump(session_config, f, indent=2)
+
+        run_script("start_feedback", ["scripts/secure_feedback_precent.py"])
+        return jsonify({"status": f"started feedback with well {well}"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    run_script("start_feedback", ["scripts/secure_feedback_precent.py"])
-    return jsonify({"status": f"started feedback with well {well}"})
 
 
 
@@ -359,9 +403,10 @@ def feedback_log():
     מחזיר את 30 השורות האחרונות מקובץ הלוג המוגדר ב-config.json.
     """
     try:
-        with open("config/session_config.json", "r") as f:
-            session_config = json.load(f)
-        experiment_folder = session_config["paths"]["agg_path"]
+        session_config = load_session_config()
+        experiment_folder = session_config.get("paths", {}).get("agg_path")
+        if not experiment_folder:
+            return jsonify({"error": "agg_path not set"}), 400
         config_path = os.path.join(experiment_folder, "config.json")
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
@@ -484,11 +529,10 @@ def stop_analyze():
 @app.route("/api/experiment_phase")
 def get_experiment_phase():
     try:
-        with open("config/session_config.json", "r", encoding="utf-8") as f:
-            session = json.load(f)
+        session = load_session_config()
         phase = session.get("phase", "acclimation")
         return jsonify({"phase": phase})
-    except:
+    except Exception:
         return jsonify({"phase": "acclimation"})
 
 @app.route("/get_paths")
