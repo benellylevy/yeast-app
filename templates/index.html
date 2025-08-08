@@ -663,21 +663,27 @@ function logToConsole(msg) {
 <script>
 // ---- LOAD EXPERIMENT BUTTON ----
 document.getElementById("load-exp-btn").onclick = async function () {
-  const handle = await window.showDirectoryPicker().catch(() => null);
-  if (!handle) return;
+  const dirHandle = await window.showDirectoryPicker().catch(() => null);
+  if (!dirHandle) return;
 
-  const path = handle.name;
+  // Try to get a full path via permission
+  const folderName = await dirHandle.name;
+
+  // Send to backend via prompt fallback (manual override)
+  const manualPath = prompt("Please confirm or edit full experiment folder path:", folderName);
+  if (!manualPath) return;
+
   fetch("/load_experiment", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ folder_name: path })
+    body: JSON.stringify({ folder_name: manualPath })
   })
   .then(res => res.json())
   .then(data => {
     document.getElementById("console-output").innerText =
       `[${new Date().toLocaleTimeString()}] ${data.status||data.error}\n` +
       document.getElementById("console-output").innerText;
-    loadPaths(); // ריענון נתיבים
+    loadPaths(); // Refresh displayed paths
   });
 };
 </script>
