@@ -28,12 +28,16 @@ def run_script(name, path):
     """
     מריץ סקריפט פייתון בשם מסוים ברקע אם הוא לא כבר רץ.
     name - שם מזהה לתהליך
-    path - נתיב לקובץ הסקריפט להרצה
+    path - נתיב לקובץ הסקריפט להרצה (יכול להיות מחרוזת או רשימה של ארגומנטים)
     """
     if name in processes:
         return
     def _run():
-        processes[name] = subprocess.Popen(["python", path])
+        if isinstance(path, list):
+            cmd = ['python'] + path if isinstance(path[0], str) and not path[0].endswith('.py') else path
+        else:
+            cmd = ['python', path]
+        processes[name] = subprocess.Popen(cmd)
         processes[name].wait()
         del processes[name]
     threading.Thread(target=_run).start()
@@ -195,12 +199,12 @@ def start_acclimation():
 
 @app.route("/start_acclimation_phase1")
 def start_acclimation_phase1():
-    run_script("acclimation", ["python", "scripts/acclimation_phased.py", "1"])
+    run_script("acclimation", ["scripts/acclimation_phased.py", "1"])
     return jsonify({"status": "started acclimation phase 1"})
 
 @app.route("/start_acclimation_phase2")
 def start_acclimation_phase2():
-    run_script("acclimation", ["python", "scripts/acclimation_phased.py", "2"])
+    run_script("acclimation", ["scripts/acclimation_phased.py", "2"])
     return jsonify({"status": "started acclimation phase 2"})
 
 @app.route("/stop_acclimation")
@@ -226,8 +230,7 @@ def start_mqtt():
         with open("config/session_config.json", "r") as f:
             session_config = json.load(f)
         mqtt_path = session_config["paths"]["name_folder"]
-        # run_script צריך לקבל גם נתיב config.json אם mqtt.py דורש אותו
-        run_script("mqtt", ["python", "scripts/mqtt.py", mqtt_path])
+        run_script("mqtt", ["scripts/mqtt.py", mqtt_path])
         return jsonify({"status": "started mqtt"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -286,7 +289,7 @@ def start_feedback():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    run_script("start_feedback", "scripts/secure_feedback_precent.py")
+    run_script("start_feedback", ["scripts/secure_feedback_precent.py"])
     return jsonify({"status": f"started feedback with well {well}"})
 
 
@@ -478,7 +481,38 @@ def stop_analyze():
         return jsonify({"status": "analyze stopped"})
     return jsonify({"status": "analyze not running"}), 404
 
+@app.route("/api/experiment_phase")
+def get_experiment_phase():
+    try:
+        with open("config/session_config.json", "r", encoding="utf-8") as f:
+            session = json.load(f)
+        phase = session.get("phase", "acclimation")
+        return jsonify({"phase": phase})
+    except:
+        return jsonify({"phase": "acclimation"})
 
+@app.route("/get_paths")
+def get_paths():
+    try:
+        with open("config/session_config.json", "r", encoding="utf-8") as f:
+            session = json.load(f)
+        return jsonify(session["paths"])
+    except:
+        return jsonify({})
+
+@app.route("/api/feedback_log")
+def get_feedback_log():
+    try:
+        with open("config/session_config.json", "r", encoding="utf-8") as f:
+            session = json.load(f)
+        log_path = os.path.join(session["paths"]["agg_path"], "Feedback_log.csv")
+        if not os.path.exists(log_path):
+            return jsonify([])
+        df = pd.read_csv(log_path)
+        return df.tail(15).to_json(orient="records")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    
 # ===================
 # סיום: הרצת השרת
 
